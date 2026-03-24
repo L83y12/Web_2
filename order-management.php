@@ -1,0 +1,245 @@
+<?php
+require_once '../config/database.php';
+
+$where = "1=1";
+
+// lọc ngày
+if (!empty($_GET['fromDate'])) {
+    $from = $_GET['fromDate'];
+    $where .= " AND o.order_date >= '$from'";
+}
+
+if (!empty($_GET['toDate'])) {
+    $to = $_GET['toDate'];
+    $where .= " AND o.order_date <= '$to'";
+}
+
+// lọc trạng thái
+if (!empty($_GET['status']) && $_GET['status'] != 'all') {
+    $status = $_GET['status'];
+    $where .= " AND o.status = '$status'";
+}
+
+// query
+$sql = "SELECT o.*, u.fullname 
+        FROM orders o
+        JOIN users u ON o.user_id = u.id
+        WHERE $where
+        ORDER BY o.ward ASC, o.order_date DESC";
+
+$result = mysqli_query($conn, $sql);
+?>
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="../assets/images/logo-1.png" />
+    <title> ChickenJoy Admin | Quản Lý Đơn Đặt Hàng</title>
+
+    <link rel="icon" type="image/png" href="../assets/images/logo-1.png" />
+    <link rel="stylesheet" href="../assets/css/admin.css" />
+</head>
+
+<body class="admin-body">
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <img src="../assets/images/logo.png" alt="Logo" class="logo-img">
+            <h2><span> ChickenJoy</span></h2>
+        </div>
+        <nav class="sidebar-menu">
+            <a href="../admin/dashboard.php">
+                <img src="../assets/images/icons/home.png" alt="Trang chủ">
+                <span>Trang chủ</span>
+            </a>
+            <a href="../admin/user-management.php">
+                <img src="../assets/images/icons/user-add.png" alt="Quản lý người dùng">
+                <span>Quản lý người dùng</span>
+            </a>
+            <a href="../admin/category.php">
+                <img src="../assets/images/icons/burger.png" alt="Loại sản phẩm">
+                <span>Loại sản phẩm</span>
+            </a>
+            <a href="../admin/list.php">
+                <img src="../assets/images/icons/app.png" alt="Danh mục sản phẩm">
+                <span>Danh mục sản phẩm</span>
+            </a>
+            <a href="../admin/import.php">
+                <img src="../assets/images/icons/import.png" alt="Nhập hàng">
+                <span>Nhập hàng</span>
+            </a>
+
+            <a href="../admin/price.php">
+                <img src="../assets/images/icons/dollar.png" alt="Giá bán">
+                <span>Giá bán</span>
+            </a>
+
+            <a href="../admin/order-management.php" class="active">
+                <img src="../assets/images/icons/order-history.png" alt="Quản lý đơn đặt hàng">
+                <span>Quản lý đơn đặt hàng</span>
+            </a>
+            <a href="../admin/inventory.php">
+                <img src="../assets/images/icons/inventory-alt.png" alt="Quản lý tồn kho">
+                <span>Quản lý tồn kho</span>
+            </a>
+            <div class="sidebar-footer">
+                <a href="../index.php" class="logout-btn">
+                    <span>Đăng xuất</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="main-header">
+            <h1>Quản Lý Đơn Đặt Hàng</h1>
+        </header>
+
+        <div class="filters">
+            <div class="filter-group">
+                <div class="filter">
+                    <label>Từ ngày:</label>
+                    <input type="date" id="fromDate" />
+                </div>
+                <div class="filter">
+                    <label>Đến ngày:</label>
+                    <input type="date" id="toDate" />
+                </div>
+                <div class="filter">
+                    <label>Tình trạng:</label>
+                    <select id="statusFilter">
+                        <?php
+                        // Lấy status hiện tại từ URL, nếu không có thì mặc định là 'all'
+                        $currentStatus = isset($_GET['status']) ? $_GET['status'] : 'all';
+                        ?>
+                        <option value="all" <?= $currentStatus == 'all' ? 'selected' : '' ?>>Tất cả</option>
+                        <option value="pending" <?= $currentStatus == 'pending' ? 'selected' : '' ?>>Chưa xử lý</option>
+                        <option value="confirmed" <?= $currentStatus == 'confirmed' ? 'selected' : '' ?>>Đã xác nhận
+                        </option>
+                        <option value="delivered" <?= $currentStatus == 'delivered' ? 'selected' : '' ?>>Đã giao
+                        </option>
+                        <option value="cancelled" <?= $currentStatus == 'cancelled' ? 'selected' : '' ?>>Đã hủy</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter">
+                <button id="filterBtn" class="btn-primary">Lọc</button>
+            </div>
+        </div>
+
+        <section class="table-section">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Mã đơn</th>
+                        <th>Khách hàng</th>
+                        <th>Ngày đặt</th>
+                        <th>Tổng tiền</th>
+                        <th>Tình trạng</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while ($row = mysqli_fetch_assoc($result)) { ?>
+                        <tr>
+                            <td>DH<?= str_pad($row['id'], 3, '0', STR_PAD_LEFT) ?></td>
+                            <td><?= $row['fullname'] ?></td>
+                            <td><?= date('Y-m-d', strtotime($row['order_date'])) ?></td>
+                            <td><?= number_format($row['total_price']) ?>đ</td>
+
+                            <td>
+                                <?php
+                                $statusText = "";
+                                $class = "";
+
+                                switch ($row['status']) {
+                                    case 'pending':
+                                        $statusText = "Chưa xử lý";
+                                        $class = "pending";
+                                        $icon = "clock-three.png";
+                                        break;
+                                    case 'confirmed':
+                                        $statusText = "Đã xác nhận";
+                                        $class = "confirmed";
+                                        $icon = "check.png";
+                                        break;
+                                    case 'delivered':
+                                        $statusText = "Đã giao";
+                                        $class = "delivered";
+                                        $icon = "open-box-check.png";
+                                        break;
+                                    case 'cancelled':
+                                        $statusText = "Đã huỷ";
+                                        $class = "cancelled";
+                                        $icon = "cross-small.png";
+                                        break;
+                                }
+                                ?>
+
+                                <span class="status <?= $class ?>">
+                                    <img src="../assets/images/icons/<?= $icon ?>" class="icon">
+                                    <?= $statusText ?>
+                                </span>
+                            </td>
+
+                            <td>
+                                <div class="actions">
+                                    <a href="order-detail.php?id=<?= $row['id'] ?>" class="btn-view">
+                                        <img src="../assets/images/icons/eye.png" alt="Xem chi tiết" class="icon-eye" />
+                                        <span>Xem chi tiết</span>
+                                    </a>
+
+                                    <div class="quick-actions">
+                                        <?php if ($row['status'] == 'pending'): ?>
+                                            <a href="update-order-status.php?id=<?= $row['id'] ?>&status=confirmed"
+                                                class="status-link btn-confirm"
+                                                onclick="return confirm('Xác nhận đơn hàng này?')">Xác nhận</a>
+                                            <a href="update-order-status.php?id=<?= $row['id'] ?>&status=delivered"
+                                                class="status-link btn-delivery"
+                                                onclick="return confirm('Giao hàng ngay?')">Giao</a>
+                                            <a href="update-order-status.php?id=<?= $row['id'] ?>&status=cancelled"
+                                                class="status-link btn-cancel-order"
+                                                onclick="return confirm('Hủy đơn hàng này?')">Huỷ</a>
+
+                                        <?php elseif ($row['status'] == 'confirmed'): ?>
+                                            <a href="update-order-status.php?id=<?= $row['id'] ?>&status=pending"
+                                                class="status-link btn-undo"
+                                                onclick="return confirm('Đưa đơn hàng này quay lại trạng thái Chưa xử lý?')">Hủy
+                                                xác nhận</a>
+
+                                            <a href="update-order-status.php?id=<?= $row['id'] ?>&status=delivered"
+                                                class="status-link btn-delivery"
+                                                onclick="return confirm('Bắt đầu giao hàng?')">Giao</a>
+                                            <a href="update-order-status.php?id=<?= $row['id'] ?>&status=cancelled"
+                                                class="status-link btn-cancel-order"
+                                                onclick="return confirm('Vẫn muốn hủy đơn này?')">Huỷ</a>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </td>
+
+                        </tr>
+                    <?php } ?>
+                </tbody>
+            </table>
+
+        </section>
+    </main>
+
+    <script>
+        document.getElementById("filterBtn").addEventListener("click", () => {
+            let from = document.getElementById("fromDate").value;
+            let to = document.getElementById("toDate").value;
+            let status = document.getElementById("statusFilter").value;
+
+            window.location.href =
+                `order-management.php?fromDate=${from}&toDate=${to}&status=${status}`;
+        });
+    </script>
+
+</body>
+
+</html>
