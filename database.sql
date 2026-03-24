@@ -186,11 +186,6 @@ CREATE TABLE `cart` (
 ALTER TABLE `users`
 ADD COLUMN `status` ENUM('active', 'locked') DEFAULT 'active';
 
-INSERT INTO users(fullname, email, password, phone, status) VALUES
-('Nguyễn Văn A', 'vana@gmail.com', 'sfjgi23', '0903456789', 'active'),
-('Trần Thị B', 'thib@gmail.com', 'bdfhsb12dg', '0778123456', 'locked'),
-('Lê Minh C', 'minhc@gmail.com', 'js32vfjsf7', '0369987654', 'active');
-
 -- reset password
 ALTER TABLE `users`
 ADD COLUMN `reset_token` VARCHAR(255) DEFAULT NULL,
@@ -206,27 +201,16 @@ ADD COLUMN `ward` VARCHAR(255) AFTER `address`;
 ALTER TABLE `users`
 ADD COLUMN `updated_at` TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP;
 
-INSERT INTO orders (user_id, receiver_name, total_price, order_date, status, address, ward, phone)
-VALUES
-(1, 'Nguyễn Văn A', 185000, '2026-03-20 10:00:00', 'pending', '123 Lê Lợi', 'Phường 1', '0901111111'),
-(1, 'Nguyễn Văn A', 250000, '2026-03-21 12:30:00', 'confirmed', '456 Nguyễn Trãi', 'Phường 5', '0901111111'),
-(2, 'Trần Thị B', 320000, '2026-03-22 14:15:00', 'delivered', '789 CMT8', 'Phường 7', '0902222222'),
-(3, 'Lê Minh C', 150000, '2026-03-23 09:45:00', 'cancelled', '321 Hai Bà Trưng', 'Phường 3', '0903333333'),
-(2, 'Trần Thị B', 210000, '2026-03-24 16:20:00', 'pending', '654 Võ Văn Tần', 'Phường 10', '0902222222'),
-(3, 'Lê Minh C', 275000, '2026-03-24 18:10:00', 'confirmed', '852 Trường Chinh', 'Phường 12', '0903333333');
+-- Đảm bảo cột password đủ 255 ký tự
+ALTER TABLE `users` MODIFY `password` VARCHAR(255) NOT NULL;
 
-INSERT INTO order_details (order_id, product_id, quantity, price_at_purchase) VALUES
-(1, 1, 2, 89000),
-(1, 10, 1, 40000),
+-- Xóa admin cũ
+DELETE FROM `users` WHERE `email` = 'admin@chickenjoy.com';
 
-(2, 2, 1, 119000),
-(2, 12, 2, 15000),
+-- Chèn lại (Lưu ý: Không dùng dấu cách ở đầu/cuối email)
+INSERT INTO `users` (`fullname`, `email`, `password`, `phone`, `role`, `status`) 
+VALUES ('Quản trị viên', 'admin@chickenjoy.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '0123456789', 'admin', 'active');
 
-(3, 4, 1, 299000),
-
-(4, 3, 2, 89000),
-
-(5, 5, 3, 45000),
-
-(6, 7, 1, 95000),
-(6, 15, 2, 30000);
+UPDATE users 
+SET password = '$2y$10$O5//LcLZtNCkVhygy9ccpO9pN4asmyGZOlXs4l.FBqdxaL5dLYs3e' 
+WHERE email = 'admin@chickenjoy.com';
